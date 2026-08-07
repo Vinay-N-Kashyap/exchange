@@ -17,6 +17,8 @@ import CreatorDesk from './pages/CreatorDesk.jsx';
 import SettingsPage from './pages/SettingsPage.jsx';
 import HubSim from './pages/HubSim.jsx';
 
+import { fetchCurrentUser as apiFetchCurrentUser } from './lib/api.js';
+
 export default function App() {
   const [activeApp, setActiveApp] = useState('exchange'); // 'exchange' | 'hub'
   const [activePage, setActivePage] = useState('marketplace'); // 'home' | 'marketplace' | 'listing_detail' | 'collections' | 'requirements' | 'passports' | 'enterprise' | 'trust' | 'knowledge' | 'my_licenses' | 'creator_desk' | 'settings'
@@ -29,16 +31,13 @@ export default function App() {
   const [user, setUser] = useState(null);
 
   useEffect(() => {
-    fetchCurrentUser();
+    loadUser();
   }, []);
 
-  const fetchCurrentUser = async () => {
+  const loadUser = async () => {
     try {
-      const res = await fetch('/api/auth/me?pinit_id=PINIT-90481234');
-      if (res.ok) {
-        const data = await res.json();
-        setUser(data);
-      }
+      const data = await apiFetchCurrentUser();
+      setUser(data);
     } catch (err) {
       console.error("Error fetching current user:", err);
     }
@@ -58,7 +57,7 @@ export default function App() {
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-dark)' }}>
       {/* Top Navbar with Working App Switcher and All Nav Modules */}
       <Navbar 
-        activePage={activePage}
+        activePage={activePage} 
         setActivePage={setActivePage}
         activeApp={activeApp}
         setActiveApp={setActiveApp}
@@ -66,11 +65,11 @@ export default function App() {
         user={user}
       />
 
-      {/* Main Content View */}
+      {/* Main Content View Switcher */}
       <main style={{ flex: 1 }}>
         {activeApp === 'hub' ? (
           <HubSim 
-            user={user}
+            user={user} 
             onOpenListFromHub={() => setIsListModalOpen(true)}
             onSwitchToExchange={() => setActiveApp('exchange')}
           />
@@ -78,21 +77,21 @@ export default function App() {
           <>
             {activePage === 'home' && (
               <HomePage 
-                onNavigate={(page) => setActivePage(page)}
-                onOpenListFromHub={() => setIsListModalOpen(true)}
+                onNavigate={setActivePage} 
+                onOpenListFromHub={() => setIsListModalOpen(true)} 
               />
             )}
 
             {activePage === 'marketplace' && (
               <Marketplace 
-                onSelectListing={handleSelectListing}
-                onOpenListFromHub={() => setIsListModalOpen(true)}
+                onSelectListing={handleSelectListing} 
+                onOpenListFromHub={() => setIsListModalOpen(true)} 
               />
             )}
 
             {activePage === 'listing_detail' && (
               <ListingDetail 
-                listingId={selectedListingId}
+                listingId={selectedListingId} 
                 onBack={() => setActivePage('marketplace')}
                 onOpenCheckout={handleOpenCheckout}
               />
@@ -106,14 +105,12 @@ export default function App() {
 
             {activePage === 'requirements' && (
               <RequirementsExchange 
-                onBack={() => setActivePage('marketplace')}
+                user={user}
               />
             )}
 
             {activePage === 'passports' && (
-              <CreatorPassports 
-                user={user}
-              />
+              <CreatorPassports />
             )}
 
             {activePage === 'enterprise' && (
@@ -121,7 +118,9 @@ export default function App() {
             )}
 
             {activePage === 'trust' && (
-              <TrustCenter />
+              <TrustCenter 
+                onOpenListFromHub={() => setIsListModalOpen(true)} 
+              />
             )}
 
             {activePage === 'knowledge' && (
@@ -131,7 +130,7 @@ export default function App() {
             {activePage === 'my_licenses' && (
               <MyLicenses 
                 user={user}
-                onViewCertificate={(sealId) => alert(`Certificate ${sealId} verified tamper-proof.`)}
+                onNavigateToMarketplace={() => setActivePage('marketplace')}
               />
             )}
 
@@ -139,13 +138,14 @@ export default function App() {
               <CreatorDesk 
                 user={user}
                 onOpenListFromHub={() => setIsListModalOpen(true)}
+                onSelectListing={handleSelectListing}
               />
             )}
 
             {activePage === 'settings' && (
               <SettingsPage 
                 user={user}
-                onUserUpdated={(updated) => setUser(updated)}
+                setUser={setUser}
               />
             )}
           </>
@@ -157,7 +157,6 @@ export default function App() {
         isOpen={isListModalOpen}
         onClose={() => setIsListModalOpen(false)}
         onListingCreated={() => {
-          setIsListModalOpen(false);
           setActivePage('marketplace');
         }}
         user={user}
@@ -167,29 +166,30 @@ export default function App() {
         isOpen={isCheckoutModalOpen}
         onClose={() => setIsCheckoutModalOpen(false)}
         listing={checkoutListing}
-        onOrderCompleted={(order) => {
-          console.log("Order sealed:", order);
+        user={user}
+        onOrderComplete={(sealedOrder) => {
+          setActivePage('my_licenses');
         }}
       />
 
       {/* Footer */}
       <footer style={{
+        background: 'rgba(7, 10, 17, 0.95)',
         borderTop: '1px solid var(--border-subtle)',
-        padding: '32px 24px',
-        marginTop: '60px',
-        background: '#04060b',
+        padding: '24px',
+        textAlign: 'center',
+        color: 'var(--text-muted)',
         fontSize: '0.85rem',
-        color: 'var(--text-muted)'
+        marginTop: 'auto'
       }}>
-        <div style={{ maxWidth: '1320px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+        <div style={{ maxWidth: '1200px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
           <div>
-            <strong style={{ color: '#fff' }}>PinIT Exchange</strong> — Powered by PinIT Hub Vault &amp; Provenance Engine.
+            PinIT Exchange &copy; {new Date().getFullYear()} — Powered by PinIT Hub Vault &amp; Sensor DNA Engine.
           </div>
           <div style={{ display: 'flex', gap: '20px' }}>
-            <span style={{ cursor: 'pointer' }} onClick={() => setActivePage('trust')}>Trust Center</span>
-            <span style={{ cursor: 'pointer' }} onClick={() => setActivePage('knowledge')}>Help &amp; Guide</span>
-            <span style={{ cursor: 'pointer' }} onClick={() => setActivePage('enterprise')}>Enterprise SLA</span>
-            <span style={{ color: 'var(--emerald)' }}>● Provenance Ledger Active</span>
+            <a href="#" onClick={(e) => { e.preventDefault(); setActivePage('trust'); }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Trust Center</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setActivePage('knowledge'); }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>License Terms</a>
+            <a href="#" onClick={(e) => { e.preventDefault(); setActivePage('enterprise'); }} style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Enterprise SLA</a>
           </div>
         </div>
       </footer>

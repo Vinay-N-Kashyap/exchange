@@ -8,7 +8,9 @@ const mockUser = {
   role: 'creator',
   kyc_status: 'verified',
   biometric_verified: 1,
-  seller_plan: 'enterprise_pro'
+  seller_plan: 'enterprise_pro',
+  agency_name: 'Rostova Visual Labs',
+  bio: 'Award-winning architectural photographer and digital artist creating high-provenance visual assets.'
 };
 
 const initialListings = [
@@ -116,7 +118,34 @@ const initialHubAssets = [
   }
 ];
 
-// Helper to check if API response is JSON
+const initialRequirements = [
+  {
+    req_id: 'REQ-8810',
+    buyer_name: 'Vanguard Studios',
+    buyer_org: 'Vanguard Media Group',
+    title: '8K Architectural Drone Scans of Tokyo Towers',
+    description: 'Require verified non-AI camera raw footage of Shibuya and Shinjuku skyscrapers.',
+    vertical: 'video',
+    budget: 4500,
+    deadline: '2026-08-30',
+    proposals_count: 7,
+    status: 'open'
+  },
+  {
+    req_id: 'REQ-8812',
+    buyer_name: 'Nexus UI Labs',
+    buyer_org: 'Nexus Fintech Corp',
+    title: 'High-Density Fintech Component Library (Figma)',
+    description: 'Looking for verified Gold-badge UI design systems for quantum trading dashboards.',
+    vertical: 'ui_ux',
+    budget: 3200,
+    deadline: '2026-09-15',
+    proposals_count: 4,
+    status: 'open'
+  }
+];
+
+// Safe fetch wrapper catching HTML 404/405/syntax errors
 async function tryFetchJson(url, options = {}) {
   try {
     const res = await fetch(url, options);
@@ -144,18 +173,18 @@ export async function apiFetchListings(vertical = 'all', badge = 'all', search =
   const result = await tryFetchJson(`/api/listings?vertical=${vertical}&badge=${badge}&search=${encodeURIComponent(search)}`);
   if (result && result.ok) return result.data;
 
-  // Supabase fallback
+  // Supabase query with error handling
   if (supabase) {
     try {
       const { data, error } = await supabase.from('content_items').select('*').order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (!error && data && Array.isArray(data) && data.length > 0) {
         return data.map(item => ({
           listing_id: item.listing_id || item.id,
           asset_id: item.asset_id || 'HA-9001',
           pinit_id: 'PINIT-90481234',
           creator_name: 'Elena Rostova',
           creator_exchange_id: 'PX-772091',
-          title: item.title,
+          title: item.title || 'Untitled Asset',
           description: item.description || '',
           vertical: item.vertical || 'images',
           tags: item.tags || '',
@@ -199,7 +228,7 @@ export async function apiFetchHubAssets(pinitId = 'PINIT-90481234') {
   if (supabase) {
     try {
       const { data, error } = await supabase.from('vault_registry').select('*').order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
+      if (!error && data && Array.isArray(data) && data.length > 0) {
         return data.map(item => ({
           asset_id: item.asset_id || item.id,
           pinit_id: pinitId,
@@ -392,34 +421,63 @@ export async function apiFetchRequirements() {
   if (supabase) {
     try {
       const { data, error } = await supabase.from('requirements').select('*').order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) return data;
+      if (!error && data && Array.isArray(data) && data.length > 0) return data;
     } catch (e) {}
   }
 
-  return [
-    {
-      req_id: 'REQ-8810',
-      buyer_name: 'Vanguard Studios',
-      buyer_org: 'Vanguard Media Group',
-      title: '8K Architectural Drone Scans of Tokyo Towers',
-      description: 'Require verified non-AI camera raw footage of Shibuya and Shinjuku skyscrapers.',
-      vertical: 'video',
-      budget: 4500,
-      deadline: '2026-08-30',
-      proposals_count: 7,
-      status: 'open'
-    },
-    {
-      req_id: 'REQ-8812',
-      buyer_name: 'Nexus UI Labs',
-      buyer_org: 'Nexus Fintech Corp',
-      title: 'High-Density Fintech Component Library (Figma)',
-      description: 'Looking for verified Gold-badge UI design systems for quantum trading dashboards.',
-      vertical: 'ui_ux',
-      budget: 3200,
-      deadline: '2026-09-15',
-      proposals_count: 4,
-      status: 'open'
+  return initialRequirements;
+}
+
+export async function apiCreateRequirement(reqData) {
+  const result = await tryFetchJson('/api/requirements', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(reqData)
+  });
+  if (result && result.ok) return result.data;
+
+  const newReq = {
+    req_id: 'REQ-' + Math.floor(1000 + Math.random() * 9000),
+    buyer_name: reqData.buyer_name || 'Enterprise Buyer',
+    buyer_org: reqData.buyer_org || 'Acme Media',
+    title: reqData.title,
+    description: reqData.description || '',
+    vertical: reqData.vertical || 'video',
+    budget: reqData.budget || 3000,
+    deadline: reqData.deadline || '2026-09-01',
+    proposals_count: 0,
+    status: 'open'
+  };
+
+  if (supabase) {
+    try {
+      await supabase.from('requirements').insert([{
+        title: reqData.title,
+        description: reqData.description || '',
+        vertical: reqData.vertical || 'video',
+        budget: String(reqData.budget || 3000)
+      }]);
+    } catch (e) {}
+  }
+
+  initialRequirements.unshift(newReq);
+  return { message: "Buyer requirement brief posted to Exchange", requirement: newReq };
+}
+
+export async function apiOnboardSeller(sellerData) {
+  const result = await tryFetchJson('/api/auth/onboard-seller', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(sellerData)
+  });
+  if (result && result.ok) return result.data;
+
+  return {
+    message: "Seller onboarded cleanly",
+    user: {
+      ...mockUser,
+      agency_name: sellerData.agency_name || mockUser.agency_name,
+      bio: sellerData.bio || mockUser.bio
     }
-  ];
+  };
 }

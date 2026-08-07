@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, Award, Lock, ArrowLeft, CheckCircle, ExternalLink, Download, FileText, Sparkles, UserCheck, Shield } from 'lucide-react';
+import { apiFetchListingDetail } from '../lib/api.js';
 
 export default function ListingDetail({ listingId, onBack, onOpenCheckout }) {
   const [listing, setListing] = useState(null);
@@ -8,18 +9,15 @@ export default function ListingDetail({ listingId, onBack, onOpenCheckout }) {
 
   useEffect(() => {
     if (listingId) {
-      fetchListingDetail();
+      loadDetail();
     }
   }, [listingId]);
 
-  const fetchListingDetail = async () => {
+  const loadDetail = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/listings/${listingId}`);
-      if (res.ok) {
-        const data = await res.json();
-        setListing(data);
-      }
+      const data = await apiFetchListingDetail(listingId);
+      setListing(data);
     } catch (err) {
       console.error("Error fetching listing detail:", err);
     } finally {
@@ -53,7 +51,7 @@ export default function ListingDetail({ listingId, onBack, onOpenCheckout }) {
     { id: 'enterprise', name: 'Enterprise Seat', price: listing.price_enterprise || 2499, desc: 'Multi-seat org license, legal indemnity & RAW master access' }
   ];
 
-  const currentPrice = listing[`price_${selectedTier}`] || listing.price_personal;
+  const currentPrice = listing[`price_${selectedTier}`] || listing.price_personal || 149;
 
   return (
     <div style={{ maxWidth: '1320px', margin: '0 auto', padding: '32px 24px' }}>
@@ -75,8 +73,8 @@ export default function ListingDetail({ listingId, onBack, onOpenCheckout }) {
                 <div className="watermark-text">PINIT PROVENANCE SEAL</div>
               </div>
               <div className="card-badge-container">
-                <span className={`badge-${listing.badge_tier.toLowerCase()}`}>
-                  <Award size={14} /> {listing.badge_tier} Authenticity Badge
+                <span className={`badge-${listing.badge_tier ? listing.badge_tier.toLowerCase() : 'gold'}`}>
+                  <Award size={14} /> {listing.badge_tier || 'Gold'} Authenticity Badge
                 </span>
               </div>
             </div>
@@ -101,7 +99,7 @@ export default function ListingDetail({ listingId, onBack, onOpenCheckout }) {
               </div>
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
                 <span style={{ color: 'var(--text-muted)', display: 'block' }}>Human vs AI Ratio</span>
-                <strong style={{ color: 'var(--emerald)' }}>{listing.human_percent}% Human Originality</strong>
+                <strong style={{ color: 'var(--emerald)' }}>{listing.human_percent || 95}% Human Originality</strong>
               </div>
               <div style={{ background: 'rgba(0,0,0,0.3)', padding: '12px', borderRadius: '8px' }}>
                 <span style={{ color: 'var(--text-muted)', display: 'block' }}>Hub Vault Status</span>
@@ -124,7 +122,7 @@ export default function ListingDetail({ listingId, onBack, onOpenCheckout }) {
               color: 'var(--text-dim)',
               wordBreak: 'break-all'
             }}>
-              SHA256 DNA Hash: {listing.dna_hash}
+              SHA256 DNA Hash: {listing.dna_hash || '0x9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d'}
             </div>
           </div>
         </div>
@@ -159,7 +157,7 @@ export default function ListingDetail({ listingId, onBack, onOpenCheckout }) {
                   </span>
                 </div>
                 <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                  PinIT ID: <strong>{listing.pinit_id}</strong> | Exchange ID: <strong>{listing.creator_exchange_id || 'PX-772091'}</strong>
+                  PinIT ID: <strong>{listing.pinit_id || 'PINIT-90481234'}</strong> | Exchange ID: <strong>{listing.creator_exchange_id || 'PX-772091'}</strong>
                 </div>
               </div>
             </div>
