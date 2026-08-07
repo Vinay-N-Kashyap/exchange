@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Filter, Award, ShieldCheck, Sparkles, Eye, Bookmark, ExternalLink, ArrowRight, Layers } from 'lucide-react';
+import { apiFetchListings } from '../lib/api';
 
 export default function Marketplace({ onSelectListing, onOpenListFromHub }) {
   const [listings, setListings] = useState([]);
@@ -10,20 +11,14 @@ export default function Marketplace({ onSelectListing, onOpenListFromHub }) {
   const [sortOption, setSortOption] = useState('newest');
 
   useEffect(() => {
-    fetchListings();
+    loadListings();
   }, [selectedVertical, selectedBadge, sortOption]);
 
-  const fetchListings = async () => {
+  const loadListings = async () => {
     setLoading(true);
     try {
-      let url = `/api/listings?vertical=${selectedVertical}&badge=${selectedBadge}&sort=${sortOption}`;
-      if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`;
-      
-      const res = await fetch(url);
-      if (res.ok) {
-        const data = await res.json();
-        setListings(data);
-      }
+      const data = await apiFetchListings(selectedVertical, selectedBadge, searchQuery);
+      setListings(data);
     } catch (err) {
       console.error("Error fetching listings:", err);
     } finally {
@@ -33,7 +28,7 @@ export default function Marketplace({ onSelectListing, onOpenListFromHub }) {
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
-    fetchListings();
+    loadListings();
   };
 
   const verticalsList = [
